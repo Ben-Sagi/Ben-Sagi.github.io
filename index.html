@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ben Sagi — Personal OS</title>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #222537;
+      --border: #2e3149;
+      --accent: #6c63ff;
+      --accent2: #48d1cc;
+      --accent3: #ff6b8a;
+      --accent4: #ffd166;
+      --accent5: #06d6a0;
+      --text: #e8eaf6;
+      --text2: #9095b8;
+      --text3: #5c6080;
+      --radius: 14px;
+      --radius-sm: 8px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.4);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Heebo', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 220px;
+      min-width: 220px;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 28px 0 20px;
+      position: fixed;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      z-index: 100;
+    }
+    .sidebar-logo {
+      padding: 0 20px 28px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-logo h1 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .sidebar-logo span {
+      font-size: 12px;
+      color: var(--text3);
+    }
+    .sidebar-nav {
+      flex: 1;
+      padding: 16px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.15s;
+      color: var(--text2);
+      font-size: 14px;
+      font-weight: 500;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: right;
+    }
+    .nav-item:hover { background: var(--surface2); color: var(--text); }
+    .nav-item.active { background: var(--accent); color: #fff; }
+    .nav-item .icon { font-size: 18px; min-width: 22px; text-align: center; }
+
+    .sidebar-footer {
+      padding: 16px 20px 0;
+      border-top: 1px solid var(--border);
+    }
+    .date-badge {
+      font-size: 12px;
+      color: var(--text3);
+      line-height: 1.6;
+    }
+
+    /* Main */
+    .main {
+      flex: 1;
+      margin-right: 220px;
+      padding: 32px;
+      min-height: 100vh;
+    }
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* Page header */
+    .page-header {
+      margin-bottom: 28px;
+    }
+    .page-header h2 {
+      font-size: 26px;
+      font-weight: 700;
+    }
+    .page-header p {
+      color: var(--text2);
+      margin-top: 4px;
+      font-size: 14px;
+    }
+
+    /* Cards grid */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 18px;
+      margin-bottom: 24px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px;
+      box-shadow: var(--shadow);
+    }
+    .card-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 10px;
+    }
+    .card-value {
+      font-size: 32px;
+      font-weight: 700;
+    }
+    .card-sub {
+      font-size: 13px;
+      color: var(--text2);
+      margin-top: 4px;
+    }
+
+    /* Task list */
+    .task-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .task-section-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .task-section-header h3 {
+      font-size: 15px;
+      font-weight: 600;
+    }
+    .badge {
+      background: var(--surface2);
+      border-radius: 20px;
+      padding: 2px 10px;
+      font-size: 12px;
+      color: var(--text2);
+    }
+
+    .task-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 13px 20px;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.1s;
+    }
+    .task-item:last-child { border-bottom: none; }
+    .task-item:hover { background: var(--surface2); }
+    .task-check {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      cursor: pointer;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+    .task-check:hover { border-color: var(--accent); }
+    .task-check.done { background: var(--accent5); border-color: var(--accent5); }
+    .task-check.done::after { content: '✓'; font-size: 11px; color: #fff; }
+    .task-text {
+      flex: 1;
+      font-size: 14px;
+    }
+    .task-text.done { text-decoration: line-through; color: var(--text3); }
+    .priority-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .p-high { background: var(--accent3); }
+    .p-med { background: var(--accent4); }
+    .p-low { background: var(--accent2); }
+
+    .task-date {
+      font-size: 11px;
+      color: var(--text3);
+      white-space: nowrap;
+    }
+    .task-delete {
+      background: none;
+      border: none;
+      color: var(--text3);
+      cursor: pointer;
+      font-size: 16px;
+      opacity: 0;
+      transition: opacity 0.1s;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .task-item:hover .task-delete { opacity: 1; }
+    .task-delete:hover { color: var(--accent3); background: rgba(255,107,138,0.1); }
+
+    /* Add form */
+    .add-form {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .add-form h3 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+    .form-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+      min-width: 140px;
+    }
+    .form-group label {
+      font-size: 12px;
+      color: var(--text2);
+      font-weight: 500;
+    }
+    input, select, textarea {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 9px 12px;
+      color: var(--text);
+      font-family: 'Heebo', sans-serif;
+      font-size: 14px;
+      width: 100%;
+      transition: border 0.15s;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    select option { background: var(--surface2); }
+    textarea { resize: vertical; min-height: 70px; }
+
+    .btn {
+      padding: 9px 20px;
+      border-radius: var(--radius-sm);
+      border: none;
+      cursor: pointer;
+      font-family: 'Heebo', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover { background: #5a52e0; }
+    .btn-sm {
+      padding: 6px 14px;
+      font-size: 13px;
+    }
+
+    /* Category tabs */
+    .tab-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+    .tab {
+      padding: 7px 16px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text2);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.15s;
+      font-family: 'Heebo', sans-serif;
+    }
+    .tab:hover { border-color: var(--accent); color: var(--text); }
+    .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    /* Money */
+    .expense-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 13px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .expense-item:last-child { border-bottom: none; }
+    .expense-item:hover { background: var(--surface2); }
+    .expense-cat-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .expense-info { flex: 1; }
+    .expense-info .name { font-size: 14px; font-weight: 500; }
+    .expense-info .cat { font-size: 12px; color: var(--text3); margin-top: 2px; }
+    .expense-amount { font-size: 16px; font-weight: 700; }
+    .expense-date { font-size: 11px; color: var(--text3); text-align: left; }
+    .expense-delete {
+      background: none; border: none; color: var(--text3);
+      cursor: pointer; font-size: 16px; opacity: 0; transition: opacity 0.1s;
+      padding: 2px 6px; border-radius: 4px;
+    }
+    .expense-item:hover .expense-delete { opacity: 1; }
+    .expense-delete:hover { color: var(--accent3); }
+
+    /* Goals */
+    .goal-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      margin-bottom: 14px;
+    }
+    .goal-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .goal-title { font-size: 16px; font-weight: 600; }
+    .goal-desc { font-size: 13px; color: var(--text2); margin-top: 3px; }
+    .goal-status {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .status-active { background: rgba(108,99,255,0.2); color: var(--accent); }
+    .status-done { background: rgba(6,214,160,0.2); color: var(--accent5); }
+    .status-paused { background: rgba(144,149,184,0.15); color: var(--text2); }
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: var(--surface2);
+      border-radius: 10px;
+      margin-top: 14px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 10px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transition: width 0.4s;
+    }
+    .goal-meta {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--text3);
+    }
+    .goal-delete {
+      background: none; border: none; color: var(--text3);
+      cursor: pointer; font-size: 14px; padding: 4px;
+    }
+    .goal-delete:hover { color: var(--accent3); }
+
+    /* Summary cards colors */
+    .accent-purple { color: var(--accent); }
+    .accent-teal { color: var(--accent2); }
+    .accent-red { color: var(--accent3); }
+    .accent-yellow { color: var(--accent4); }
+    .accent-green { color: var(--accent5); }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--text3);
+    }
+    .empty-state .emoji { font-size: 40px; margin-bottom: 12px; }
+    .empty-state p { font-size: 14px; }
+
+    /* Loading */
+    .loading {
+      text-align: center;
+      padding: 32px;
+      color: var(--text3);
+      font-size: 14px;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 20px;
+      font-size: 14px;
+      color: var(--text);
+      box-shadow: var(--shadow);
+      transition: transform 0.3s;
+      z-index: 999;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* Budget bar */
+    .budget-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .budget-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .budget-label { font-size: 14px; font-weight: 500; }
+    .budget-amounts { font-size: 13px; color: var(--text2); }
+    .budget-amounts span { font-weight: 700; color: var(--text); }
+
+    @media (max-width: 700px) {
+      .sidebar { width: 60px; min-width: 60px; }
+      .nav-item span:not(.icon) { display: none; }
+      .sidebar-logo h1, .sidebar-logo span, .date-badge { display: none; }
+      .main { margin-right: 60px; padding: 20px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <h1>Ben Sagi</h1>
+    <span>Personal OS</span>
+  </div>
+  <nav class="sidebar-nav">
+    <button class="nav-item active" onclick="navigate('home')">
+      <span class="icon">🏠</span><span>ראשי</span>
+    </button>
+    <button class="nav-item" onclick="navigate('tasks')">
+      <span class="icon">✅</span><span>משימות</span>
+    </button>
+    <button class="nav-item" onclick="navigate('money')">
+      <span class="icon">💰</span><span>כסף</span>
+    </button>
+    <button class="nav-item" onclick="navigate('goals')">
+      <span class="icon">🎯</span><span>יעדים</span>
+    </button>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="date-badge" id="sidebar-date"></div>
+  </div>
+</aside>
+
+<!-- Main content -->
+<main class="main">
+
+  <!-- HOME -->
+  <div class="page active" id="page-home">
+    <div class="page-header">
+      <h2 id="greeting">שלום, בן 👋</h2>
+      <p id="today-date"></p>
+    </div>
+
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-title">משימות פתוחות</div>
+        <div class="card-value accent-purple" id="stat-tasks">—</div>
+        <div class="card-sub">ממתינות לטיפול</div>
+      </div>
+      <div class="card">
+        <div class="card-title">הוצאות החודש</div>
+        <div class="card-value accent-yellow" id="stat-expenses">—</div>
+        <div class="card-sub" id="stat-expenses-sub">מתוך תקציב</div>
+      </div>
+      <div class="card">
+        <div class="card-title">יעדים פעילים</div>
+        <div class="card-value accent-teal" id="stat-goals">—</div>
+        <div class="card-sub">בתהליך</div>
+      </div>
+      <div class="card">
+        <div class="card-title">משימות דחופות</div>
+        <div class="card-value accent-red" id="stat-urgent">—</div>
+        <div class="card-sub">עדיפות גבוהה</div>
+      </div>
+    </div>
+
+    <!-- Urgent tasks preview -->
+    <div class="task-section">
+      <div class="task-section-header">
+        <h3>משימות דחופות</h3>
+        <button class="btn btn-sm btn-primary" onclick="navigate('tasks')">כל המשימות</button>
+      </div>
+      <div id="home-urgent-tasks"><div class="loading">טוען...</div></div>
+    </div>
+
+    <!-- Recent expenses preview -->
+    <div class="task-section" style="margin-top:20px">
+      <div class="task-section-header">
+        <h3>הוצאות אחרונות</h3>
+        <button class="btn btn-sm btn-primary" onclick="navigate('money')">כל ההוצאות</button>
+      </div>
+      <div id="home-recent-expenses"><div class="loading">טוען...</div></div>
+    </div>
+  </div>
+
+  <!-- TASKS -->
+  <div class="page" id="page-tasks">
+    <div class="page-header">
+      <h2>משימות</h2>
+      <p>נהל את המשימות שלך לפי קטגוריה ועדיפות</p>
+    </div>
+
+    <div class="add-form">
+      <h3>+ משימה חדשה</h3>
+      <div class="form-row">
+        <div class="form-group" style="flex:2; min-width:200px">
+          <label>משימה</label>
+          <input type="text" id="task-title" placeholder="מה צריך לעשות?" />
+        </div>
+        <div class="form-group">
+          <label>קטגוריה</label>
+          <select id="task-cat">
+            <option value="work">עבודה</option>
+            <option value="personal">אישי</option>
+            <option value="shopping">קניות</option>
+            <option value="other">שונות</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>עדיפות</label>
+          <select id="task-priority">
+            <option value="high">גבוהה 🔴</option>
+            <option value="medium" selected>בינונית 🟡</option>
+            <option value="low">נמוכה 🟢</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>תאריך יעד</label>
+          <input type="date" id="task-due" />
+        </div>
+        <div class="form-group" style="flex:0">
+          <label>&nbsp;</label>
+          <button class="btn btn-primary" onclick="addTask()">הוסף</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-bar">
+      <button class="tab active" onclick="filterTasks('all', this)">הכל</button>
+      <button class="tab" onclick="filterTasks('work', this)">עבודה</button>
+      <button class="tab" onclick="filterTasks('personal', this)">אישי</button>
+      <button class="tab" onclick="filterTasks('shopping', this)">קניות</button>
+      <button class="tab" onclick="filterTasks('other', this)">שונות</button>
+    </div>
+
+    <div class="task-section">
+      <div class="task-section-header">
+        <h3>משימות פתוחות</h3>
+        <span class="badge" id="open-count">0</span>
+      </div>
+      <div id="tasks-open"><div class="loading">טוען...</div></div>
+    </div>
+
+    <div class="task-section">
+      <div class="task-section-header">
+        <h3>הושלמו</h3>
+        <span class="badge" id="done-count">0</span>
+      </div>
+      <div id="tasks-done"><div class="loading">טוען...</div></div>
+    </div>
+  </div>
+
+  <!-- MONEY -->
+  <div class="page" id="page-money">
+    <div class="page-header">
+      <h2>כסף</h2>
+      <p>מעקב הוצאות ותקציב חודשי</p>
+    </div>
+
+    <div class="budget-section">
+      <div class="budget-row">
+        <span class="budget-label">תקציב חודשי</span>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input type="number" id="budget-input" placeholder="סכום בש״ח" style="width:140px" />
+          <button class="btn btn-primary btn-sm" onclick="saveBudget()">שמור</button>
+        </div>
+      </div>
+      <div class="budget-row">
+        <span class="budget-amounts">הוצאת: <span id="spent-amount">0</span> ש״ח</span>
+        <span class="budget-amounts">נשאר: <span id="left-amount">—</span> ש״ח</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="budget-bar" style="width:0%"></div>
+      </div>
+    </div>
+
+    <div class="add-form">
+      <h3>+ הוצאה חדשה</h3>
+      <div class="form-row">
+        <div class="form-group" style="flex:2">
+          <label>תיאור</label>
+          <input type="text" id="exp-desc" placeholder="על מה הוצאת?" />
+        </div>
+        <div class="form-group">
+          <label>סכום (ש״ח)</label>
+          <input type="number" id="exp-amount" placeholder="0" />
+        </div>
+        <div class="form-group">
+          <label>קטגוריה</label>
+          <select id="exp-cat">
+            <option value="food">🍕 אוכל</option>
+            <option value="transport">🚗 תחבורה</option>
+            <option value="shopping">🛍️ קניות</option>
+            <option value="health">💊 בריאות</option>
+            <option value="entertainment">🎮 בידור</option>
+            <option value="bills">📄 חשבונות</option>
+            <option value="other">📦 אחר</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>תאריך</label>
+          <input type="date" id="exp-date" />
+        </div>
+        <div class="form-group" style="flex:0">
+          <label>&nbsp;</label>
+          <button class="btn btn-primary" onclick="addExpense()">הוסף</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-bar">
+      <button class="tab active" onclick="filterExpenses('all', this)">הכל</button>
+      <button class="tab" onclick="filterExpenses('food', this)">🍕 אוכל</button>
+      <button class="tab" onclick="filterExpenses('transport', this)">🚗 תחבורה</button>
+      <button class="tab" onclick="filterExpenses('shopping', this)">🛍️ קניות</button>
+      <button class="tab" onclick="filterExpenses('health', this)">💊 בריאות</button>
+      <button class="tab" onclick="filterExpenses('entertainment', this)">🎮 בידור</button>
+      <button class="tab" onclick="filterExpenses('bills', this)">📄 חשבונות</button>
+    </div>
+
+    <div class="task-section">
+      <div class="task-section-header">
+        <h3>הוצאות החודש</h3>
+        <span class="badge" id="exp-count">0</span>
+      </div>
+      <div id="expenses-list"><div class="loading">טוען...</div></div>
+    </div>
+  </div>
+
+  <!-- GOALS -->
+  <div class="page" id="page-goals">
+    <div class="page-header">
+      <h2>יעדים</h2>
+      <p>המטרות שלך — אישיות ומקצועיות</p>
+    </div>
+
+    <div class="add-form">
+      <h3>+ יעד חדש</h3>
+      <div class="form-row">
+        <div class="form-group" style="flex:2">
+          <label>שם היעד</label>
+          <input type="text" id="goal-title" placeholder="מה אתה רוצה להשיג?" />
+        </div>
+        <div class="form-group" style="flex:2">
+          <label>תיאור (אופציונלי)</label>
+          <input type="text" id="goal-desc" placeholder="פרטים נוספים..." />
+        </div>
+        <div class="form-group">
+          <label>תאריך יעד</label>
+          <input type="date" id="goal-date" />
+        </div>
+        <div class="form-group" style="flex:0">
+          <label>&nbsp;</label>
+          <button class="btn btn-primary" onclick="addGoal()">הוסף</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="goals-list"><div class="loading">טוען...</div></div>
+  </div>
+
+</main>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── Supabase ───────────────────────────────────────
+const { createClient } = supabase;
+const sb = createClient(
+  'https://irzyfrtjsosqdgsfhydk.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlyenlmcnRqc29zcWRnc2ZoeWRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNzY3MzAsImV4cCI6MjA5MTc1MjczMH0.efDTo7wc2fZiQww6RtGRdzL35SVkMWz438p1kBW4U2c'
+);
+
+// ─── State ───────────────────────────────────────────
+let allTasks = [];
+let allExpenses = [];
+let allGoals = [];
+let taskFilter = 'all';
+let expFilter = 'all';
+let monthBudget = parseInt(localStorage.getItem('budget') || '0');
+
+// ─── Navigation ──────────────────────────────────────
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelector(`[onclick="navigate('${page}')"]`).classList.add('active');
+  if (page === 'home') loadHome();
+}
+
+// ─── Date ────────────────────────────────────────────
+function initDate() {
+  const now = new Date();
+  const days = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+  const months = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+  const str = `יום ${days[now.getDay()]}, ${now.getDate()} ב${months[now.getMonth()]} ${now.getFullYear()}`;
+  document.getElementById('today-date').textContent = str;
+  document.getElementById('sidebar-date').innerHTML = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()}<br>${days[now.getDay()]}`;
+
+  const h = now.getHours();
+  let g = h < 12 ? 'בוקר טוב' : h < 17 ? 'צהריים טובים' : 'ערב טוב';
+  document.getElementById('greeting').textContent = `${g}, בן 👋`;
+
+  // default today for date inputs
+  const today = now.toISOString().split('T')[0];
+  ['task-due','exp-date','goal-date'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = today;
+  });
+}
+
+// ─── Toast ───────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ─── TASKS ───────────────────────────────────────────
+const catLabels = { work:'עבודה', personal:'אישי', shopping:'קניות', other:'שונות' };
+const catColors = { work:'rgba(108,99,255,0.15)', personal:'rgba(72,209,204,0.15)', shopping:'rgba(255,209,102,0.15)', other:'rgba(144,149,184,0.1)' };
+
+async function loadTasks() {
+  const { data, error } = await sb.from('tasks').select('*').order('created_at', { ascending: false });
+  if (error) { console.error(error); return; }
+  allTasks = data || [];
+  renderTasks();
+  updateHomeStats();
+}
+
+function renderTasks() {
+  const filtered = taskFilter === 'all' ? allTasks : allTasks.filter(t => t.category === taskFilter);
+  const open = filtered.filter(t => !t.done);
+  const done = filtered.filter(t => t.done);
+
+  document.getElementById('open-count').textContent = open.length;
+  document.getElementById('done-count').textContent = done.length;
+
+  document.getElementById('tasks-open').innerHTML = open.length
+    ? open.map(taskHTML).join('')
+    : `<div class="empty-state"><div class="emoji">✅</div><p>אין משימות פתוחות</p></div>`;
+
+  document.getElementById('tasks-done').innerHTML = done.length
+    ? done.map(taskHTML).join('')
+    : `<div class="empty-state"><p>אין משימות שהושלמו</p></div>`;
+}
+
+function taskHTML(t) {
+  const pClass = t.priority === 'high' ? 'p-high' : t.priority === 'medium' ? 'p-med' : 'p-low';
+  const dateStr = t.due_date ? new Date(t.due_date).toLocaleDateString('he-IL') : '';
+  return `
+    <div class="task-item" id="task-${t.id}">
+      <div class="task-check ${t.done ? 'done' : ''}" onclick="toggleTask('${t.id}', ${t.done})"></div>
+      <div class="priority-dot ${pClass}"></div>
+      <span class="task-text ${t.done ? 'done' : ''}">${t.title}</span>
+      <span style="font-size:11px;color:var(--text3);background:var(--surface2);padding:2px 8px;border-radius:10px">${catLabels[t.category]||t.category}</span>
+      ${dateStr ? `<span class="task-date">${dateStr}</span>` : ''}
+      <button class="task-delete" onclick="deleteTask('${t.id}')">✕</button>
+    </div>`;
+}
+
+async function addTask() {
+  const title = document.getElementById('task-title').value.trim();
+  if (!title) return showToast('כתוב שם למשימה');
+  const cat = document.getElementById('task-cat').value;
+  const priority = document.getElementById('task-priority').value;
+  const due = document.getElementById('task-due').value || null;
+
+  const { error } = await sb.from('tasks').insert({ title, category: cat, priority, due_date: due, done: false });
+  if (error) return showToast('שגיאה: ' + error.message);
+  document.getElementById('task-title').value = '';
+  showToast('משימה נוספה!');
+  await loadTasks();
+}
+
+async function toggleTask(id, done) {
+  await sb.from('tasks').update({ done: !done }).eq('id', id);
+  await loadTasks();
+}
+
+async function deleteTask(id) {
+  await sb.from('tasks').delete().eq('id', id);
+  showToast('משימה נמחקה');
+  await loadTasks();
+}
+
+function filterTasks(cat, btn) {
+  taskFilter = cat;
+  document.querySelectorAll('#page-tasks .tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  renderTasks();
+}
+
+// ─── EXPENSES ────────────────────────────────────────
+const catIcons = { food:'🍕', transport:'🚗', shopping:'🛍️', health:'💊', entertainment:'🎮', bills:'📄', other:'📦' };
+const catBg = { food:'rgba(255,107,138,0.15)', transport:'rgba(108,99,255,0.15)', shopping:'rgba(255,209,102,0.15)', health:'rgba(6,214,160,0.15)', entertainment:'rgba(72,209,204,0.15)', bills:'rgba(144,149,184,0.1)', other:'rgba(144,149,184,0.1)' };
+const catNames = { food:'אוכל', transport:'תחבורה', shopping:'קניות', health:'בריאות', entertainment:'בידור', bills:'חשבונות', other:'אחר' };
+
+async function loadExpenses() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  const { data, error } = await sb.from('expenses').select('*').gte('date', start).order('date', { ascending: false });
+  if (error) return;
+  allExpenses = data || [];
+  renderExpenses();
+  updateBudgetBar();
+  updateHomeStats();
+}
+
+function renderExpenses() {
+  const filtered = expFilter === 'all' ? allExpenses : allExpenses.filter(e => e.category === expFilter);
+  document.getElementById('exp-count').textContent = filtered.length;
+  document.getElementById('expenses-list').innerHTML = filtered.length
+    ? filtered.map(expHTML).join('')
+    : `<div class="empty-state"><div class="emoji">💸</div><p>אין הוצאות עדיין</p></div>`;
+}
+
+function expHTML(e) {
+  const dateStr = new Date(e.date).toLocaleDateString('he-IL');
+  return `
+    <div class="expense-item">
+      <div class="expense-cat-icon" style="background:${catBg[e.category]||catBg.other}">${catIcons[e.category]||'📦'}</div>
+      <div class="expense-info">
+        <div class="name">${e.description}</div>
+        <div class="cat">${catNames[e.category]||e.category}</div>
+      </div>
+      <div>
+        <div class="expense-amount">₪${Number(e.amount).toLocaleString()}</div>
+        <div class="expense-date">${dateStr}</div>
+      </div>
+      <button class="expense-delete" onclick="deleteExpense('${e.id}')">✕</button>
+    </div>`;
+}
+
+async function addExpense() {
+  const desc = document.getElementById('exp-desc').value.trim();
+  const amount = parseFloat(document.getElementById('exp-amount').value);
+  if (!desc || !amount) return showToast('מלא תיאור וסכום');
+  const cat = document.getElementById('exp-cat').value;
+  const date = document.getElementById('exp-date').value;
+
+  const { error } = await sb.from('expenses').insert({ description: desc, amount, category: cat, date });
+  if (error) return showToast('שגיאה: ' + error.message);
+  document.getElementById('exp-desc').value = '';
+  document.getElementById('exp-amount').value = '';
+  showToast('הוצאה נוספה!');
+  await loadExpenses();
+}
+
+async function deleteExpense(id) {
+  await sb.from('expenses').delete().eq('id', id);
+  showToast('הוצאה נמחקה');
+  await loadExpenses();
+}
+
+function filterExpenses(cat, btn) {
+  expFilter = cat;
+  document.querySelectorAll('#page-money .tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  renderExpenses();
+}
+
+function saveBudget() {
+  const v = parseInt(document.getElementById('budget-input').value);
+  if (!v) return;
+  monthBudget = v;
+  localStorage.setItem('budget', v);
+  updateBudgetBar();
+  showToast('תקציב עודכן!');
+}
+
+function updateBudgetBar() {
+  const total = allExpenses.reduce((s, e) => s + Number(e.amount), 0);
+  document.getElementById('spent-amount').textContent = total.toLocaleString();
+  if (monthBudget > 0) {
+    const pct = Math.min(100, Math.round((total / monthBudget) * 100));
+    document.getElementById('budget-bar').style.width = pct + '%';
+    document.getElementById('budget-bar').style.background = pct > 85
+      ? 'linear-gradient(90deg, #ff6b8a, #ff4444)'
+      : 'linear-gradient(90deg, var(--accent), var(--accent2))';
+    document.getElementById('left-amount').textContent = Math.max(0, monthBudget - total).toLocaleString();
+    document.getElementById('stat-expenses-sub').textContent = `מתוך ₪${monthBudget.toLocaleString()}`;
+  }
+  if (document.getElementById('budget-input').value === '') {
+    document.getElementById('budget-input').value = monthBudget || '';
+  }
+}
+
+// ─── GOALS ───────────────────────────────────────────
+async function loadGoals() {
+  const { data, error } = await sb.from('goals').select('*').order('created_at', { ascending: false });
+  if (error) return;
+  allGoals = data || [];
+  renderGoals();
+  updateHomeStats();
+}
+
+function renderGoals() {
+  const el = document.getElementById('goals-list');
+  if (!allGoals.length) {
+    el.innerHTML = `<div class="empty-state"><div class="emoji">🎯</div><p>עדיין אין יעדים — הגדר את המטרה הראשונה שלך!</p></div>`;
+    return;
+  }
+  el.innerHTML = allGoals.map(goalHTML).join('');
+}
+
+function goalHTML(g) {
+  const statusMap = { active:'status-active', done:'status-done', paused:'status-paused' };
+  const statusLabel = { active:'פעיל', done:'הושלם', paused:'מושהה' };
+  const dateStr = g.target_date ? new Date(g.target_date).toLocaleDateString('he-IL') : '';
+  const pct = g.progress || 0;
+  return `
+    <div class="goal-item">
+      <div class="goal-header">
+        <div>
+          <div class="goal-title">${g.title}</div>
+          ${g.description ? `<div class="goal-desc">${g.description}</div>` : ''}
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="goal-status ${statusMap[g.status]||'status-active'}">${statusLabel[g.status]||'פעיל'}</span>
+          <button class="goal-delete" onclick="deleteGoal('${g.id}')">🗑️</button>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:12px;color:var(--text3)">התקדמות:</span>
+        <input type="range" min="0" max="100" value="${pct}" style="flex:1;accent-color:var(--accent)" onchange="updateProgress('${g.id}', this.value)" />
+        <span style="font-size:13px;font-weight:600;min-width:35px">${pct}%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+      <div class="goal-meta">
+        <span>${dateStr ? 'יעד: ' + dateStr : ''}</span>
+        <div style="display:flex;gap:8px">
+          <button onclick="setGoalStatus('${g.id}','active')" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--text3)">פעיל</button>
+          <button onclick="setGoalStatus('${g.id}','done')" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--text3)">הושלם</button>
+          <button onclick="setGoalStatus('${g.id}','paused')" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--text3)">השהה</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function addGoal() {
+  const title = document.getElementById('goal-title').value.trim();
+  if (!title) return showToast('כתוב שם ליעד');
+  const desc = document.getElementById('goal-desc').value.trim() || null;
+  const date = document.getElementById('goal-date').value || null;
+
+  const { error } = await sb.from('goals').insert({ title, description: desc, target_date: date, progress: 0, status: 'active' });
+  if (error) return showToast('שגיאה: ' + error.message);
+  document.getElementById('goal-title').value = '';
+  document.getElementById('goal-desc').value = '';
+  showToast('יעד נוסף!');
+  await loadGoals();
+}
+
+async function updateProgress(id, val) {
+  await sb.from('goals').update({ progress: parseInt(val) }).eq('id', id);
+  await loadGoals();
+}
+
+async function setGoalStatus(id, status) {
+  await sb.from('goals').update({ status }).eq('id', id);
+  showToast('סטטוס עודכן');
+  await loadGoals();
+}
+
+async function deleteGoal(id) {
+  await sb.from('goals').delete().eq('id', id);
+  showToast('יעד נמחק');
+  await loadGoals();
+}
+
+// ─── HOME ────────────────────────────────────────────
+function updateHomeStats() {
+  const openTasks = allTasks.filter(t => !t.done).length;
+  const urgentTasks = allTasks.filter(t => !t.done && t.priority === 'high').length;
+  const totalSpent = allExpenses.reduce((s, e) => s + Number(e.amount), 0);
+  const activeGoals = allGoals.filter(g => g.status === 'active').length;
+
+  document.getElementById('stat-tasks').textContent = openTasks;
+  document.getElementById('stat-urgent').textContent = urgentTasks;
+  document.getElementById('stat-expenses').textContent = '₪' + totalSpent.toLocaleString();
+  document.getElementById('stat-goals').textContent = activeGoals;
+}
+
+function loadHome() {
+  // Urgent tasks preview
+  const urgent = allTasks.filter(t => !t.done && t.priority === 'high').slice(0, 5);
+  document.getElementById('home-urgent-tasks').innerHTML = urgent.length
+    ? urgent.map(taskHTML).join('')
+    : `<div class="empty-state"><div class="emoji">🎉</div><p>אין משימות דחופות</p></div>`;
+
+  // Recent expenses
+  const recent = allExpenses.slice(0, 5);
+  document.getElementById('home-recent-expenses').innerHTML = recent.length
+    ? recent.map(expHTML).join('')
+    : `<div class="empty-state"><div class="emoji">💸</div><p>אין הוצאות החודש</p></div>`;
+}
+
+// ─── INIT ─────────────────────────────────────────────
+async function init() {
+  initDate();
+  await Promise.all([loadTasks(), loadExpenses(), loadGoals()]);
+  loadHome();
+}
+
+init();
+</script>
+</body>
+</html>
