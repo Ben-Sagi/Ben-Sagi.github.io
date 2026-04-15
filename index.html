@@ -6,6 +6,7 @@
   <title>Ben Sagi — Personal OS</title>
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://accounts.google.com/gsi/client" onload="initGoogle()" defer></script>
   <style>
     :root {
       --bg: #0f1117;
@@ -478,6 +479,89 @@
     .budget-amounts { font-size: 13px; color: var(--text2); }
     .budget-amounts span { font-weight: 700; color: var(--text); }
 
+    /* Google Connect */
+    .google-connect-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 36px 20px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .google-connect-wrap .g-icon { font-size: 44px; margin-bottom: 14px; }
+    .google-connect-wrap p { color: var(--text2); margin-bottom: 18px; font-size: 14px; }
+    .btn-google {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: #fff; color: #3c4043;
+      border: 1px solid #dadce0; border-radius: var(--radius-sm);
+      padding: 10px 22px; font-family: 'Heebo', sans-serif;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      transition: box-shadow 0.15s;
+    }
+    .btn-google:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+    .btn-google img { width: 20px; height: 20px; }
+    .connected-dot {
+      display: inline-block; width: 8px; height: 8px;
+      border-radius: 50%; background: var(--accent5); margin-left: 6px;
+    }
+
+    /* Calendar */
+    .cal-day-header {
+      padding: 10px 20px 6px;
+      font-size: 12px; font-weight: 700;
+      color: var(--text3); text-transform: uppercase;
+      letter-spacing: 0.5px; border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+    }
+    .cal-event {
+      display: flex; align-items: flex-start; gap: 14px;
+      padding: 13px 20px; border-bottom: 1px solid var(--border);
+      transition: background 0.1s;
+    }
+    .cal-event:last-child { border-bottom: none; }
+    .cal-event:hover { background: var(--surface2); }
+    .cal-time {
+      min-width: 70px; font-size: 12px; font-weight: 600;
+      color: var(--accent); padding-top: 2px;
+    }
+    .cal-event-info .cal-title { font-size: 14px; font-weight: 500; }
+    .cal-event-info .cal-loc {
+      font-size: 12px; color: var(--text3); margin-top: 2px;
+    }
+    .cal-allday {
+      background: rgba(108,99,255,0.12);
+      border-radius: 4px; padding: 2px 8px;
+      font-size: 11px; color: var(--accent); font-weight: 600;
+    }
+
+    /* Gmail */
+    .email-item {
+      display: flex; align-items: flex-start; gap: 14px;
+      padding: 13px 20px; border-bottom: 1px solid var(--border);
+      cursor: default; transition: background 0.1s;
+    }
+    .email-item:last-child { border-bottom: none; }
+    .email-item:hover { background: var(--surface2); }
+    .email-item.unread .email-subject { font-weight: 700; color: var(--text); }
+    .email-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--accent); display: flex; align-items: center;
+      justify-content: center; font-size: 15px; font-weight: 700;
+      color: #fff; flex-shrink: 0;
+    }
+    .email-body { flex: 1; min-width: 0; }
+    .email-from { font-size: 13px; font-weight: 600; margin-bottom: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .email-subject { font-size: 14px; color: var(--text2);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .email-snippet { font-size: 12px; color: var(--text3); margin-top: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .email-time { font-size: 11px; color: var(--text3); white-space: nowrap; flex-shrink: 0; }
+    .account-label {
+      font-size: 11px; color: var(--text3); padding: 3px 10px;
+      background: var(--surface2); border-radius: 10px;
+    }
+
     @media (max-width: 700px) {
       .sidebar { width: 60px; min-width: 60px; }
       .nav-item span:not(.icon) { display: none; }
@@ -506,6 +590,12 @@
     </button>
     <button class="nav-item" onclick="navigate('goals')">
       <span class="icon">🎯</span><span>יעדים</span>
+    </button>
+    <button class="nav-item" onclick="navigate('calendar')">
+      <span class="icon">📅</span><span>לוח שנה</span>
+    </button>
+    <button class="nav-item" onclick="navigate('gmail')">
+      <span class="icon">✉️</span><span>מיילים</span>
     </button>
   </nav>
   <div class="sidebar-footer">
@@ -562,6 +652,15 @@
         <button class="btn btn-sm btn-primary" onclick="navigate('money')">כל ההוצאות</button>
       </div>
       <div id="home-recent-expenses"><div class="loading">טוען...</div></div>
+    </div>
+
+    <!-- Today's calendar events -->
+    <div class="task-section" id="home-cal-section" style="margin-top:20px;display:none">
+      <div class="task-section-header">
+        <h3>אירועים היום 📅</h3>
+        <button class="btn btn-sm btn-primary" onclick="navigate('calendar')">כל האירועים</button>
+      </div>
+      <div id="home-today-events"><div class="loading">טוען...</div></div>
     </div>
   </div>
 
@@ -741,6 +840,75 @@
     <div id="goals-list"><div class="loading">טוען...</div></div>
   </div>
 
+  <!-- CALENDAR -->
+  <div class="page" id="page-calendar">
+    <div class="page-header">
+      <h2>לוח שנה</h2>
+      <p>אירועים קרובים מ-Google Calendar</p>
+    </div>
+
+    <div id="cal-auth-wrap">
+      <div class="google-connect-wrap">
+        <div class="g-icon">📅</div>
+        <p>חבר את Google Calendar שלך כדי לראות אירועים קרובים</p>
+        <button class="btn-google" onclick="connectGoogle1()">
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G" />
+          התחבר עם Google
+        </button>
+      </div>
+    </div>
+
+    <div id="cal-content" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <span style="font-size:13px;color:var(--text2)">
+          <span class="connected-dot"></span>
+          <span id="cal-account-label">מחובר</span>
+        </span>
+        <button class="btn btn-sm" onclick="refreshCalendar()"
+          style="background:var(--surface2);color:var(--text2);border:1px solid var(--border)">רענן</button>
+      </div>
+      <div class="task-section" id="cal-events-wrap">
+        <div id="cal-events-list"><div class="loading">טוען אירועים...</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GMAIL -->
+  <div class="page" id="page-gmail">
+    <div class="page-header">
+      <h2>מיילים</h2>
+      <p>הודעות נכנסות מחשבונות Gmail שלך</p>
+    </div>
+
+    <!-- Account 1 -->
+    <div class="task-section" style="margin-bottom:20px">
+      <div class="task-section-header">
+        <h3>bensagi981@gmail.com</h3>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span id="acc1-status" class="account-label">לא מחובר</span>
+          <button id="btn-connect1" class="btn btn-sm btn-primary" onclick="connectGoogle1()">חבר</button>
+        </div>
+      </div>
+      <div id="gmail-list-1">
+        <div class="empty-state"><div class="emoji">✉️</div><p>לחץ "חבר" כדי לטעון מיילים</p></div>
+      </div>
+    </div>
+
+    <!-- Account 2 -->
+    <div class="task-section">
+      <div class="task-section-header">
+        <h3>ben@mallva.co</h3>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span id="acc2-status" class="account-label">לא מחובר</span>
+          <button id="btn-connect2" class="btn btn-sm btn-primary" onclick="connectGoogle2()">חבר</button>
+        </div>
+      </div>
+      <div id="gmail-list-2">
+        <div class="empty-state"><div class="emoji">✉️</div><p>לחץ "חבר" כדי לטעון מיילים</p></div>
+      </div>
+    </div>
+  </div>
+
 </main>
 
 <!-- Toast -->
@@ -769,6 +937,11 @@ function navigate(page) {
   document.getElementById('page-' + page).classList.add('active');
   document.querySelector(`[onclick="navigate('${page}')"]`).classList.add('active');
   if (page === 'home') loadHome();
+  if (page === 'calendar' && token1) loadCalendarEvents();
+  if (page === 'gmail') {
+    if (token1) loadGmailAccount(token1, 'gmail-list-1');
+    if (token2) loadGmailAccount(token2, 'gmail-list-2');
+  }
 }
 
 // ─── Date ────────────────────────────────────────────
@@ -1078,6 +1251,260 @@ function loadHome() {
   document.getElementById('home-recent-expenses').innerHTML = recent.length
     ? recent.map(expHTML).join('')
     : `<div class="empty-state"><div class="emoji">💸</div><p>אין הוצאות החודש</p></div>`;
+}
+
+// ─── GOOGLE INTEGRATION ──────────────────────────────
+const GOOGLE_CLIENT_ID = '881937160531-le662pl09kb7sl6la7v0g4ssrn73cfto.apps.googleusercontent.com';
+const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/gmail.readonly';
+
+let token1 = sessionStorage.getItem('g_token1') || null;
+let token2 = sessionStorage.getItem('g_token2') || null;
+let tokenClient1, tokenClient2;
+
+function initGoogle() {
+  tokenClient1 = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: GOOGLE_SCOPES,
+    login_hint: 'bensagi981@gmail.com',
+    callback: async (resp) => {
+      if (resp.error) { showToast('שגיאה בהתחברות לחשבון 1'); return; }
+      token1 = resp.access_token;
+      sessionStorage.setItem('g_token1', token1);
+      onAccount1Connected();
+    }
+  });
+
+  tokenClient2 = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: GOOGLE_SCOPES,
+    login_hint: 'ben@mallva.co',
+    callback: async (resp) => {
+      if (resp.error) { showToast('שגיאה בהתחברות לחשבון 2'); return; }
+      token2 = resp.access_token;
+      sessionStorage.setItem('g_token2', token2);
+      onAccount2Connected();
+    }
+  });
+
+  // If tokens were saved in session, restore UI
+  if (token1) onAccount1Connected(false);
+  if (token2) onAccount2Connected(false);
+}
+
+function connectGoogle1() {
+  if (!tokenClient1) { showToast('Google לא נטען עדיין, נסה שוב...'); return; }
+  tokenClient1.requestAccessToken({ prompt: '' });
+}
+
+function connectGoogle2() {
+  if (!tokenClient2) { showToast('Google לא נטען עדיין, נסה שוב...'); return; }
+  tokenClient2.requestAccessToken({ prompt: '' });
+}
+
+async function onAccount1Connected(load = true) {
+  // Calendar page
+  document.getElementById('cal-auth-wrap').style.display = 'none';
+  document.getElementById('cal-content').style.display = 'block';
+  document.getElementById('cal-account-label').textContent = 'bensagi981@gmail.com';
+  // Gmail page
+  document.getElementById('acc1-status').innerHTML = '<span class="connected-dot"></span>מחובר';
+  const btn = document.getElementById('btn-connect1');
+  if (btn) { btn.textContent = 'רענן'; }
+  // Home
+  document.getElementById('home-cal-section').style.display = '';
+
+  if (load) {
+    await loadCalendarEvents();
+    await loadGmailAccount(token1, 'gmail-list-1');
+    renderHomeTodayEvents();
+  }
+}
+
+async function onAccount2Connected(load = true) {
+  document.getElementById('acc2-status').innerHTML = '<span class="connected-dot"></span>מחובר';
+  const btn = document.getElementById('btn-connect2');
+  if (btn) { btn.textContent = 'רענן'; }
+  if (load) await loadGmailAccount(token2, 'gmail-list-2');
+}
+
+// ─── CALENDAR ────────────────────────────────────────
+let calEvents = [];
+
+async function loadCalendarEvents() {
+  if (!token1) return;
+  document.getElementById('cal-events-list').innerHTML = '<div class="loading">טוען אירועים...</div>';
+  try {
+    const now = new Date().toISOString();
+    const end = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const res = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(now)}&timeMax=${encodeURIComponent(end)}&singleEvents=true&orderBy=startTime&maxResults=30`,
+      { headers: { Authorization: `Bearer ${token1}` } }
+    );
+    if (res.status === 401) { token1 = null; sessionStorage.removeItem('g_token1'); showToast('פג תוקף החיבור — התחבר מחדש'); return; }
+    const data = await res.json();
+    calEvents = data.items || [];
+    renderCalendarEvents();
+  } catch(e) { document.getElementById('cal-events-list').innerHTML = '<div class="empty-state"><p>שגיאה בטעינת אירועים</p></div>'; }
+}
+
+async function refreshCalendar() {
+  await loadCalendarEvents();
+  renderHomeTodayEvents();
+}
+
+function renderCalendarEvents() {
+  const el = document.getElementById('cal-events-list');
+  if (!calEvents.length) {
+    el.innerHTML = '<div class="empty-state"><div class="emoji">🎉</div><p>אין אירועים ב-7 הימים הקרובים</p></div>';
+    return;
+  }
+
+  // Group by date
+  const groups = {};
+  calEvents.forEach(ev => {
+    const dateKey = ev.start.date || ev.start.dateTime.split('T')[0];
+    if (!groups[dateKey]) groups[dateKey] = [];
+    groups[dateKey].push(ev);
+  });
+
+  const dayNames = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+  const monthNames = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+
+  let html = '';
+  Object.keys(groups).sort().forEach(dateKey => {
+    const d = new Date(dateKey + 'T00:00:00');
+    const today = new Date(); today.setHours(0,0,0,0);
+    const tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
+    let label;
+    if (d.toDateString() === today.toDateString()) label = 'היום';
+    else if (d.toDateString() === tomorrow.toDateString()) label = 'מחר';
+    else label = `יום ${dayNames[d.getDay()]}, ${d.getDate()} ב${monthNames[d.getMonth()]}`;
+
+    html += `<div class="cal-day-header">${label}</div>`;
+    groups[dateKey].forEach(ev => {
+      const isAllDay = !!ev.start.date;
+      let timeStr = '';
+      if (!isAllDay) {
+        const start = new Date(ev.start.dateTime);
+        const end = new Date(ev.end.dateTime);
+        timeStr = `${start.getHours().toString().padStart(2,'0')}:${start.getMinutes().toString().padStart(2,'0')} — ${end.getHours().toString().padStart(2,'0')}:${end.getMinutes().toString().padStart(2,'0')}`;
+      }
+      const loc = ev.location ? `<div class="cal-loc">📍 ${ev.location}</div>` : '';
+      html += `
+        <div class="cal-event">
+          <div class="cal-time">${isAllDay ? '<span class="cal-allday">כל היום</span>' : timeStr}</div>
+          <div class="cal-event-info">
+            <div class="cal-title">${ev.summary || 'ללא כותרת'}</div>
+            ${loc}
+          </div>
+        </div>`;
+    });
+  });
+
+  el.innerHTML = html;
+}
+
+function renderHomeTodayEvents() {
+  if (!token1 || !calEvents.length) return;
+  const today = new Date().toISOString().split('T')[0];
+  const todayEvs = calEvents.filter(ev => {
+    const d = ev.start.date || ev.start.dateTime.split('T')[0];
+    return d === today;
+  });
+  const el = document.getElementById('home-today-events');
+  if (!todayEvs.length) {
+    el.innerHTML = '<div class="empty-state"><div class="emoji">☀️</div><p>אין אירועים היום</p></div>';
+    return;
+  }
+  el.innerHTML = todayEvs.map(ev => {
+    const isAllDay = !!ev.start.date;
+    let timeStr = isAllDay ? 'כל היום' : (() => {
+      const s = new Date(ev.start.dateTime);
+      return `${s.getHours().toString().padStart(2,'0')}:${s.getMinutes().toString().padStart(2,'0')}`;
+    })();
+    return `<div class="cal-event"><div class="cal-time">${timeStr}</div><div class="cal-event-info"><div class="cal-title">${ev.summary||'ללא כותרת'}</div></div></div>`;
+  }).join('');
+}
+
+// ─── GMAIL ───────────────────────────────────────────
+async function loadGmailAccount(token, containerId) {
+  if (!token) return;
+  const el = document.getElementById(containerId);
+  el.innerHTML = '<div class="loading">טוען מיילים...</div>';
+  try {
+    const res = await fetch(
+      'https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=10&labelIds=INBOX',
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (res.status === 401) {
+      if (containerId === 'gmail-list-1') { token1 = null; sessionStorage.removeItem('g_token1'); }
+      else { token2 = null; sessionStorage.removeItem('g_token2'); }
+      el.innerHTML = '<div class="empty-state"><p>פג תוקף — התחבר מחדש</p></div>';
+      return;
+    }
+    const data = await res.json();
+    if (!data.messages || !data.messages.length) {
+      el.innerHTML = '<div class="empty-state"><div class="emoji">📭</div><p>תיבת דואר נכנס ריקה</p></div>';
+      return;
+    }
+    const messages = await Promise.all(
+      data.messages.map(m =>
+        fetch(`https://www.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=Subject,From,Date`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        ).then(r => r.json())
+      )
+    );
+    renderEmails(messages, containerId);
+  } catch(e) {
+    el.innerHTML = '<div class="empty-state"><p>שגיאה בטעינת מיילים</p></div>';
+  }
+}
+
+function renderEmails(messages, containerId) {
+  const el = document.getElementById(containerId);
+  if (!messages.length) {
+    el.innerHTML = '<div class="empty-state"><div class="emoji">📭</div><p>אין הודעות</p></div>';
+    return;
+  }
+  el.innerHTML = messages.map(msg => {
+    const headers = msg.payload?.headers || [];
+    const get = name => (headers.find(h => h.name === name) || {}).value || '';
+    const from = get('From');
+    const subject = get('Subject') || '(ללא נושא)';
+    const date = get('Date');
+    const snippet = msg.snippet || '';
+    const unread = msg.labelIds?.includes('UNREAD');
+
+    // Parse sender name
+    const fromName = from.includes('<') ? from.split('<')[0].trim().replace(/"/g, '') : from.split('@')[0];
+    const initials = fromName.charAt(0).toUpperCase();
+
+    // Format date
+    let dateStr = '';
+    try {
+      const d = new Date(date);
+      const now = new Date();
+      if (d.toDateString() === now.toDateString()) {
+        dateStr = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+      } else {
+        dateStr = `${d.getDate()}/${d.getMonth()+1}`;
+      }
+    } catch(e) {}
+
+    const avatarColors = ['#6c63ff','#48d1cc','#ff6b8a','#ffd166','#06d6a0'];
+    const color = avatarColors[initials.charCodeAt(0) % avatarColors.length];
+
+    return `
+      <div class="email-item ${unread ? 'unread' : ''}">
+        <div class="email-avatar" style="background:${color}">${initials}</div>
+        <div class="email-body">
+          <div class="email-from">${fromName}</div>
+          <div class="email-subject">${subject}</div>
+          <div class="email-snippet">${snippet}</div>
+        </div>
+        <div class="email-time">${dateStr}</div>
+      </div>`;
+  }).join('');
 }
 
 // ─── INIT ─────────────────────────────────────────────
